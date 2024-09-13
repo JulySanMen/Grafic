@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convoluciones Chidas</title>
+</head>
+<body>
+    <canvas id="canvas"></canvas> <!--Es el lugar donde se cargará la imagén y despues se tendrá otro canvas donde entrará el resultado-->
+
+    <canvas id="resultado"></canvas>
+
+   
+   <script type="text/javascript">
+
+        var image = new Image(); //Se define la variable de tipo imagén
+        image.onload = imageLoaded;
+        image.src = "gato.jpeg";
+
+        function imageLoaded(){
+            var canvas = document.getElementById("canvas")
+            var ctx = canvas.getContext("2d")
+
+            canvas.width = image.width;     // Faltaba ;
+            canvas.height = image.height;   // Aquí Tambien
+            
+            ctx.drawImage(image, 0, 0, image.width, image.height);
+
+            blancoNegro(canvas);
+
+            var resultado = document.getElementById("resultado"); //Cambiar canvas por resultado
+            convolucionar(canvas, resultado);
+        }
+
+        function blancoNegro(canvas){
+            var ctx = canvas.getContext("2d");
+            var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var pixeles = imgData.data;
+
+            for (var p=0; p < pixeles.length; p += 4){
+
+                var rojo = pixeles[p];
+                var verde = pixeles[p+1];
+                var azul = pixeles[p+2];
+                var alpha = pixeles[p+3];
+
+                var gris = (rojo + verde + azul) / 3;
+
+                pixeles[p] = gris;
+                pixeles[p+1] = gris;
+                pixeles[p+2] = gris;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            //console.log(imgData);
+        }
+
+        function convolucionar(canvasFuente, canvasDestino){
+            // Obtener todas las variables necesarias
+
+            var ctxFuente = canvasFuente.getContext("2d");
+            var imgDataFuente = ctxFuente.getImageData(0, 0, canvasFuente.width, canvasFuente.height);
+            var pixelesFuente = imgDataFuente.data;
+
+            canvasDestino.width = canvasFuente.width;
+            canvasDestino.height = canvasFuente.height;
+
+            var ctxDestino = canvasDestino.getContext("2d");
+            var imgDataDestino = ctxDestino.getImageData(0, 0, canvasDestino.width, canvasDestino.height);
+            var pixelesDestino = imgDataDestino.data;   // Teniamos ImgDestino
+
+            var sobelVertical = [
+                [-1, 0,  1],
+                [-2, 0,  2],
+                [-1, 0,  1],
+            ];
+            
+            var sobelHorizontal = [
+                [-1, -2, -1],
+                [ 0,  0,  0],
+                [ 1,  2,  1],
+            ];
+            //20 matrices 
+
+             
+            for (var y=1; y < canvasFuente.height-1; y++){
+                for (var x=1; x < canvasFuente.width-1; x++){
+                    
+                    // Obtener la posición en el arreglo de javascript
+                    var idx = ((y*canvasFuente.width) + x) * 4;
+                    
+                    var totalY = 0;
+                    var totalX = 0;
+                    
+                    for (var kernelY = 0; kernelY < 3; kernelY++){
+                        for (var kernelX = 0; kernelX < 3; kernelX++){
+                            
+                            totalY += sobelVertical[kernelY][kernelX]* 
+                                pixelesFuente[((((y + (kernelY-1))*canvasFuente.width) + (x + (kernelX-1))) * 4)];
+                           
+                            totalX += sobelVertical[kernelY][kernelX]* 
+                                pixelesFuente[((((y + (kernelY-1))*canvasFuente.width) + (x + (kernelX-1))) * 4)];
+                        }
+                    }
+                    
+                   /* var casillaY1 = sobelVertical[0][0] *  pixelesFuente[((((y-1) * canvasFuente.width) + (x-1)) * 4)];
+                    var casillaY2 = sobelVertical[0][1] *  pixelesFuente[((((y-1) * canvasFuente.width) + (x)) * 4)];
+                    var casillaY3 = sobelVertical[0][2] *  pixelesFuente[((((y-1) * canvasFuente.width) + (x+1)) * 4)];
+                    var casillaY4 = sobelVertical[1][0] *  pixelesFuente[((((y) * canvasFuente.width) + (x-1)) * 4)];
+                    var casillaY5 = sobelVertical[1][1] *  pixelesFuente[((((y) * canvasFuente.width) + (x)) * 4)];
+                    var casillaY6 = sobelVertical[1][2] *  pixelesFuente[((((y) * canvasFuente.width) + (x+1)) * 4)];
+                    var casillaY7 = sobelVertical[2][0] *  pixelesFuente[((((y+1) * canvasFuente.width) + (x-1)) * 4)];
+                    var casillaY8 = sobelVertical[2][1] *  pixelesFuente[((((y+1) * canvasFuente.width) + (x)) * 4)];
+                    var casillaY9 = sobelVertical[2][2] *  pixelesFuente[((((y+1) * canvasFuente.width) + (x+1)) * 4)];
+
+                    var resultadoY = casillaY1 + casillaY2 + casillaY3 + casillaY4 + casillaY5 + casillaY6 + casillaY7 + casillaY8 + casillaY9;
+ 
+                    var casillaX1 = sobelHorizontal[0][0] *  pixelesFuente[((((y-1) * canvasFuente.width) + (x-1)) * 4)];
+                    var casillaX2 = sobelHorizontal[0][1] *  pixelesFuente[((((y-1) * canvasFuente.width) + (x)) * 4)];
+                    var casillaX3 = sobelHorizontal[0][2] *  pixelesFuente[((((y-1) * canvasFuente.width) + (x+1)) * 4)];
+                    var casillaX4 = sobelHorizontal[1][0] *  pixelesFuente[((((y) * canvasFuente.width) + (x-1)) * 4)];
+                    var casillaX5 = sobelHorizontal[1][1] *  pixelesFuente[((((y) * canvasFuente.width) + (x)) * 4)];
+                    var casillaX6 = sobelHorizontal[1][2] *  pixelesFuente[((((y) * canvasFuente.width) + (x+1)) * 4)];
+                    var casillaX7 = sobelHorizontal[2][0] *  pixelesFuente[((((y+1) * canvasFuente.width) + (x-1)) * 4)];
+                    var casillaX8 = sobelHorizontal[2][1] *  pixelesFuente[((((y+1) * canvasFuente.width) + (x)) * 4)];
+                    var casillaX9 = sobelHorizontal[2][2] *  pixelesFuente[((((y+1) * canvasFuente.width) + (x+1)) * 4)];
+
+                    var resultadoX = casillaX1 + casillaX2 + casillaX3 + casillaX4 + casillaX5 + casillaX6 + casillaX7 + casillaX8 + casillaX9;*/
+                    
+                    var mag = Math.sqrt( (totalX*totalX) + (totalY*totalY) );
+                    
+                    mag = (mag < 100) ? 0 : mag;       // Threshold o Limite
+                    
+                    pixelesDestino[idx] = mag;        //Rojo
+                    pixelesDestino[idx+1] = mag;      //Verde
+                    pixelesDestino[idx+2] = mag;      //Azul
+                    pixelesDestino[idx+3] = 255;            //Alpha
+                    
+                    
+                }
+            }
+            ctxDestino.putImageData(imgDataDestino, 0, 0);
+            console.log(imgData);
+        }
+
+    </script>
+</body>
+</html>
