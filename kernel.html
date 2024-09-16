@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convoluciones en Cuadrícula</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 20px;
+            margin: 20px;
+        }
+        .grid-item {
+            text-align: center;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Imagen Original</h1>
+    <canvas id="original"></canvas> 
+\
+    <div class="grid-container" id="resultados"></div>
+
+    <script type="text/javascript">
+        var image = new Image();
+        image.onload = imageLoaded;
+        image.src = "ima.jpeg"; 
+
+        function imageLoaded() {
+            var canvas = document.getElementById("original");
+            var ctx = canvas.getContext("2d");
+
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            ctx.drawImage(image, 0, 0, image.width, image.height);
+
+            // Convercion blanco y negro
+            blancoNegro(canvas);
+
+            //convoluciones
+            var kernels = obtenerKernels();
+            for (var i = 0; i < kernels.length; i++) {
+                crearCanvasConResultado(i + 1, kernels[i].nombre, kernels[i].vertical, kernels[i].horizontal);
+            }
+        }
+
+        function blancoNegro(canvas) {
+            var ctx = canvas.getContext("2d");
+            var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var pixeles = imgData.data;
+
+            for (var p = 0; p < pixeles.length; p += 4) {
+                var gris = (pixeles[p] + pixeles[p+1] + pixeles[p+2]) / 3;
+                pixeles[p] = gris;
+                pixeles[p+1] = gris;
+                pixeles[p+2] = gris;
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function crearCanvasConResultado(id, titulo, sobelVertical, sobelHorizontal) {
+            
+            var resultadosDiv = document.getElementById("resultados");
+            var gridItem = document.createElement("div");
+            gridItem.className = "grid-item";
+
+            var tituloElemento = document.createElement("h3");
+            tituloElemento.textContent = "Cambio " + id + ": " + titulo;
+            gridItem.appendChild(tituloElemento);
+
+            
+            var canvasResultado = document.createElement("canvas");
+            gridItem.appendChild(canvasResultado);
+            canvasResultado.width = image.width;
+            canvasResultado.height = image.height;
+
+            resultadosDiv.appendChild(gridItem);
+
+        
+            convolucionar(document.getElementById("original"), canvasResultado, sobelVertical, sobelHorizontal);
+        }
+
+        function convolucionar(canvasFuente, canvasDestino, sobelVertical, sobelHorizontal) {
+            var ctxFuente = canvasFuente.getContext("2d");
+            var imgDataFuente = ctxFuente.getImageData(0, 0, canvasFuente.width, canvasFuente.height);
+            var pixelesFuente = imgDataFuente.data;
+
+            var ctxDestino = canvasDestino.getContext("2d");
+            var imgDataDestino = ctxDestino.getImageData(0, 0, canvasDestino.width, canvasDestino.height);
+            var pixelesDestino = imgDataDestino.data;
+
+            for (var y = 1; y < canvasFuente.height - 1; y++) {
+                for (var x = 1; x < canvasFuente.width - 1; x++) {
+                    var idx = ((y * canvasFuente.width) + x) * 4;
+                    var totalY = 0;
+                    var totalX = 0;
+
+                    for (var ky = 0; ky < 3; ky++) {
+                        for (var kx = 0; kx < 3; kx++) {
+                            var i = (((y + (ky - 1)) * canvasFuente.width) + (x + (kx - 1))) * 4;
+                            totalY += sobelVertical[ky][kx] * pixelesFuente[i];
+                            totalX += sobelHorizontal[ky][kx] * pixelesFuente[i];
+                        }
+                    }
+
+                    var mag = Math.sqrt((totalX * totalX) + (totalY * totalY));
+                    mag = (mag < 100) ? 0 : mag;
+
+                    pixelesDestino[idx] = mag;
+                    pixelesDestino[idx + 1] = mag;
+                    pixelesDestino[idx + 2] = mag;
+                    pixelesDestino[idx + 3] = 255;
+                }
+            }
+
+            ctxDestino.putImageData(imgDataDestino, 0, 0);
+        }
+
+        function obtenerKernels() {
+            return [
+                {
+                    nombre: "normal",
+                    vertical: [
+                        [-1, 0, 1],
+                        [-2, 0, 2],
+                        [-1, 0, 1]
+                    ],
+                    horizontal: [
+                        [-1, -2, -1],
+                        [0, 0, 0],
+                        [1, 2, 1]
+                    ]
+                },
+                {
+                    nombre: "Emboss",
+                    vertical: [
+                        [-2, -1, 0],
+                        [-1, 1, 1],
+                        [0, 1, 2]
+                    ],
+                    horizontal: [
+                        [-2, -1, 0],
+                        [-1, 1, 1],
+                        [0, 1, 2]
+                    ]
+                },
+                {
+                    nombre: "Sharpen",
+                    vertical: [
+                        [0, -1, 0],
+                        [-1, 5, -1],
+                        [0, -1, 0]
+                    ],
+                    horizontal: [
+                        [0, -1, 0],
+                        [-1, 5, -1],
+                        [0, -1, 0]
+                    ]
+                },
+                {
+                    nombre: "matrix1",
+                    vertical: [
+                        [-2, 1,  2],
+                        [-2, 1,  2],
+                        [-2, 1,  2],
+                    ],
+                    horizontal: [
+                        [-1, -2, -1],
+                        [0, 0, 0],
+                        [1, 2, 1]
+                    ]
+                },
+                {
+                    nombre: "Edge Detection",
+                    vertical: [
+                        [1, 0, -1],
+                        [0, 0, 0],
+                        [-1, 0, 1]
+                    ],
+                    horizontal: [
+                        [0, 1, 0],
+                        [1, -4, 1],
+                        [0, 1, 0]
+                    ]
+                },
+                {
+                    nombre: "matrix2",
+                    vertical: [
+                        [0, 1, 0],
+                        [-1, 0, 1],
+                        [0, -1, 0]
+                    ],
+                    horizontal: [
+                        [0, -1, 0],
+                        [1, 0, -1],
+                        [0, 1, 0]
+                    ]
+                },
+                {
+                    nombre: "matrix3",
+                    vertical: [
+                        [2, 1, 0],
+                        [1, 0, -1],
+                        [0, -1, -2]
+                    ],
+                    horizontal: [
+                        [0, -1, -2],
+                        [1, 0, -1],
+                        [2, 1, 0]
+                    ]
+                },
+                {
+                    nombre: "matrix4",
+                    vertical: [
+                        [1, 1, 1],
+                        [0, 0, 0],
+                        [-1, -1, -1]
+                    ],
+                    horizontal: [
+                        [-1, 0, 1],
+                        [-1, 0, 1],
+                        [-1, 0, 1]
+                    ]
+                },
+                {
+                    nombre: "matrix5",
+                    vertical: [
+                        [-1, -1, -1],
+                        [0, 0, 0],
+                        [1, 1, 1]
+                    ],
+                    horizontal: [
+                        [1, 2, 1],
+                        [0, 0, 0],
+                        [-1, -2, -1]
+                    ]
+                },
+                {
+                    nombre: "matrix6",
+                    vertical: [
+                        [0, 1, 2],
+                        [-1, 0, 1],
+                        [-2, -1, 0]
+                    ],
+                    horizontal: [
+                        [2, 1, 0],
+                        [1, 0, -1],
+                        [0, -1, -2]
+                    ]
+                }
+            ];
+        }
+
+    </script>
+</body>
+</html>

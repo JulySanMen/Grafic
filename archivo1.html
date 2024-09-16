@@ -70,15 +70,15 @@
             var pixelesDestino = imgDataDestino.data;   // Teniamos ImgDestino
 
             var sobelVertical = [
-                [-1, 0,  1],
-                [-2, 0,  2],
-                [-1, 0,  1],
+                [-2, 1,  2],
+                [-2, 1,  2],
+                [-2, 1,  2],
             ];
             
             var sobelHorizontal = [
-                [-1, -2, -1],
+                [-1,  2, -1],
                 [ 0,  0,  0],
-                [ 1,  2,  1],
+                [ -1,  2,  1],
             ];
             //20 matrices 
 
